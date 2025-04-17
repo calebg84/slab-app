@@ -17,7 +17,7 @@ import * as ImagePicker from 'expo-image-picker'
 import { addDoc, collection, getDocs } from 'firebase/firestore'
 import { Logs } from 'expo'
 
-Logs.enableExpoCliLogging()
+// Logs.enableExpoCliLogging()
 
 export default function App() {
   const initialState = {
@@ -245,6 +245,8 @@ export default function App() {
             filterData(val)
           }}
         />
+                <Text>StockID is: {stockID} </Text>
+
         <DropdownField
           data={['Green', 'Dry']}
           value={green}
@@ -300,6 +302,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingTop: 58,
+    backgroundColor: 'white',
   },
   textField: {
     marginVertical: 20,
