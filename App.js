@@ -14,7 +14,7 @@ import Button from './Components/Button'
 import DropdownField from './Components/DropdownField'
 import TextField from './Components/TextField'
 import * as ImagePicker from 'expo-image-picker'
-import { addDoc, collection, getDocs } from 'firebase/firestore'˜
+import { addDoc, collection, getDocs } from 'firebase/firestore'
 import { Logs } from 'expo'
 
 // Logs.enableExpoCliLogging()
