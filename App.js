@@ -14,7 +14,7 @@ import Button from './Components/Button'
 import DropdownField from './Components/DropdownField'
 import TextField from './Components/TextField'
 import * as ImagePicker from 'expo-image-picker'
-import { addDoc, collection, getDocs } from 'firebase/firestore'
+import { addDoc, collection, getDocs } from 'firebase/firestore'˜
 import { Logs } from 'expo'
 
 // Logs.enableExpoCliLogging()
@@ -291,6 +291,30 @@ export default function App() {
         />
         <Text>Images Selected: {selectedImages.length} </Text>
         <Button label='Save Slab to DB' onPress={sendDocToDb} />
+        {/* <Buttonˆ
+          label='Close App'
+          onPress={() => {
+            Alert.alert(
+              'Close App',
+              'Are you sure you want to close the app?',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'OK',
+                  onPress: () => {
+                    if (__DEV__) {
+                      console.log('Closing app in development mode is not supported.');
+                    } else {
+                      // In a production app, you would use a native module or exit logic
+                      console.log('App close functionality is not available in Expo.');
+                    }
+                  },
+                },
+              ],
+              { cancelable: true }
+            );
+          }}
+        /> */}
         <StatusBar style='auto' />
       </View>
     </ScrollView>
