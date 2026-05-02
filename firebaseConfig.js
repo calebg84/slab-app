@@ -1,23 +1,15 @@
-// import firebase from 'firebase'
-// import 'firebase/firestore'
-// import 'firebase/storage'
 import { initializeApp } from 'firebase/app'
 import { getStorage } from 'firebase/storage'
 
 const firebaseConfig = {
-  apiKey: 'AIzaSyAT58uBeWqGHpk4c9no5AowN8grjvO9LCc',
-  authDomain: 'sawmill-site.firebaseapp.com',
-  databaseURL: 'https://sawmill-site.firebaseio.com',
-  projectId: 'sawmill-site',
-  storageBucket: 'sawmill-site.appspot.com',
-  messagingSenderId: '240175581510',
-  appId: '1:240175581510:web:1705fb3d350ee5e7827d47',
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  databaseURL: process.env.EXPO_PUBLIC_FIREBASE_DATABASE_URL,
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
 }
 
 export const app = initializeApp(firebaseConfig)
-// const storage = firebase.storage()
-// const db = getFirestore()
-// const storage = getStorage(app)
-
-// export { storage, db, firebase as default }
-// export { db, storage }
+export const storage = getStorage(app)

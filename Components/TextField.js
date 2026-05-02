@@ -1,9 +1,7 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { StyleSheet, Text, View, TextInput } from 'react-native'
 
 const TextField = (props) => {
-  const [newText, setNewText] = useState('')
-
   return (
     <View style={styles.textField}>
       <Text
@@ -22,10 +20,7 @@ const TextField = (props) => {
           padding: 5,
         }}
         placeholder={`${props.fieldName}`}
-        onChangeText={(newText) => {
-          //   setNewText(newText)
-          props.callBack(newText)
-        }}
+        onChangeText={(text) => props.callBack(text)}
         defaultValue={props.value}
       />
     </View>

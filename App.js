@@ -1,23 +1,13 @@
 import { useState } from 'react'
 import { StatusBar } from 'expo-status-bar'
-import { StyleSheet, View, Alert, ScrollView, Text } from 'react-native'
-import { app } from './firebaseConfig'
-import { getFirestore } from 'firebase/firestore'
-import {
-  getStorage,
-  ref,
-  uploadBytes,
-  uploadBytesResumable,
-  getDownloadURL,
-} from 'firebase/storage'
+import { StyleSheet, View, Alert, ScrollView, Text, ActivityIndicator } from 'react-native'
+import { app, storage } from './firebaseConfig'
+import { getFirestore, collection, getDocs, addDoc } from 'firebase/firestore'
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
 import Button from './Components/Button'
 import DropdownField from './Components/DropdownField'
 import TextField from './Components/TextField'
 import * as ImagePicker from 'expo-image-picker'
-import { addDoc, collection, getDocs } from 'firebase/firestore'
-import { Logs } from 'expo'
-
-// Logs.enableExpoCliLogging()
 
 export default function App() {
   const initialState = {
@@ -32,37 +22,20 @@ export default function App() {
     thickness: '',
     green: false,
   }
+
   const [selectedImages, setSelectedImages] = useState([])
+  const [loading, setLoading] = useState(false)
   const [
-    {
-      species,
-      stockID,
-      downloadUrls,
-      description,
-      length,
-      maxWidth,
-      minWidth,
-      price,
-      thickness,
-      green,
-    },
+    { species, stockID, downloadUrls, description, length, maxWidth, minWidth, price, thickness, green },
     setState,
   ] = useState(initialState)
-  // const [selectedSpecies, setSelectedSpecies] = useState([])
-  // const [newStockId, setNewStockId] = useState('')
-  // const [downloadUrls, setDownloadUrls] = useState([])
-  // const [description, setDescription] = useState('')
-  // const [length, setLength] = useState('')
-  // const [maxWidth, setMaxWidth] = useState('')
-  // const [minWidth, setMinWidth] = useState('')
-  // const [price, setprice] = useState('')
-  // const [thickness, setThickness] = useState('')
 
   const onChange = ({ name, value }) => {
-    return setState((prevState) => ({ ...prevState, [name]: value }))
+    setState((prevState) => ({ ...prevState, [name]: value }))
   }
+
   const clearState = () => {
-    return setState({ ...initialState })
+    setState({ ...initialState })
   }
 
   const db = getFirestore(app)
@@ -92,106 +65,78 @@ export default function App() {
     'Sycamore',
     'Walnut - Black',
   ]
+
   const sendDocToDb = async () => {
+    if (
+      !species ||
+      !stockID ||
+      downloadUrls.length < 1 ||
+      !length ||
+      !maxWidth ||
+      !minWidth ||
+      !price ||
+      !thickness
+    ) {
+      Alert.alert('Missing Fields', 'Please fill in all required fields.')
+      return
+    }
+
+    setLoading(true)
+
     try {
-      if (
-        !species ||
-        !stockID ||
-        downloadUrls.length < 1 ||
-        !length ||
-        !maxWidth ||
-        !minWidth ||
-        !price ||
-        !thickness
-      ) {
-        Alert.alert('There are fields with missing values')
-        console.log({
-          species: species,
-          stockID: stockID,
-          imageURI: downloadUrls,
-          description: description,
-          length: length,
-          maxWidth: maxWidth,
-          minWidth: minWidth,
-          price: price,
-          thickness: thickness,
-          green: green,
-        })
-      } else {
-        const docRef = await addDoc(collection(db, 'slabs'), {
-          species: species,
-          stockID: stockID,
-          imageURI: downloadUrls,
-          description: description,
-          length: length,
-          maxWidth: maxWidth,
-          minWidth: minWidth,
-          price: price,
-          thickness: thickness,
-          green: green,
-        })
-        Alert.alert(`Document written with ID: ${docRef.id}`)
-        clearState()
-        setSelectedImages([])
-      }
+      const docRef = await addDoc(collection(db, 'slabs'), {
+        species,
+        stockID,
+        imageURI: downloadUrls,
+        description,
+        length,
+        maxWidth,
+        minWidth,
+        price,
+        thickness,
+        green,
+      })
+      Alert.alert('Success', `Slab saved with ID: ${docRef.id}`)
+      clearState()
+      setSelectedImages([])
     } catch (e) {
-      console.error('Error adding document: ', e)
+      Alert.alert('Error', 'Failed to save slab. Please try again.')
+    } finally {
+      setLoading(false)
     }
   }
 
   const getDocsFromDb = async () => {
-    let docs = new Set()
     try {
       const querySnapshot = await getDocs(collection(db, 'slabs'))
-      querySnapshot.forEach((doc) => {
-        let newData = doc.data()
-        docs.add(newData)
-      })
-      return [...docs]
+      return querySnapshot.docs.map((doc) => doc.data())
     } catch (e) {
-      console.error('Error fetching documents: ', e)
+      Alert.alert('Error', 'Failed to fetch existing slabs.')
+      return []
     }
   }
 
   const filterData = async (val) => {
-    let data = await getDocsFromDb()
-    let prefix
-    let largestIdNumber
+    const data = await getDocsFromDb()
+    const filteredData = data.filter((obj) => obj.species === val)
+
     let newStockId
-    let filteredData =
-      data.length > 0 && data.filter((obj) => obj.species === val)
-    console.log('filteredData: ', filteredData)
     if (filteredData.length > 0) {
-      let existingIds = filteredData.map((obj) => obj.stockID)
-      console.log('existingIds: ', existingIds)
-      largestIdNumber = Math.max(
-        ...existingIds.map((id) => {
-          console.log('id is: ', id)
-          prefix = id.split('-')[0]
-          return Number(id.split('-')[1])
-        })
+      const largestIdNumber = Math.max(
+        ...filteredData.map((obj) => Number(obj.stockID.split('-')[1]))
       )
-      let stockNumber = (largestIdNumber + 1).toString()
-      newStockId = `${prefix}-${stockNumber.padStart(3, '0')}`
+      const prefix = filteredData[0].stockID.split('-')[0]
+      newStockId = `${prefix}-${(largestIdNumber + 1).toString().padStart(3, '0')}`
     } else {
-      console.log('species is: ', val)
-      console.log('val.substring(0,2) is: ', val.substring(0, 2))
-      console.log(
-        'val.substring(0,2).toUpperCase() is: ',
-        val.substring(0, 2).toUpperCase()
-      )
       newStockId = `${val.substring(0, 2).toUpperCase()}-001`
     }
     onChange({ name: 'stockID', value: newStockId })
   }
 
   const pickImageAsync = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      // allowsEditing: true,
+    const result = await ImagePicker.launchImageLibraryAsync({
       allowsMultipleSelection: true,
-      // quality: 1,
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
-      aspect: [4, 3],
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0,
     })
 
@@ -199,38 +144,33 @@ export default function App() {
       setSelectedImages(result.assets)
       sendImages(result.assets)
     } else {
-      alert('You did not select any image.')
+      Alert.alert('Cancelled', 'No image selected.')
     }
   }
 
-  const uploadImages = async (img) => {
-    let newDownloadUrls = []
-    const storage = getStorage(app)
+  const uploadImages = async (stockId, images) => {
+    const urls = []
     try {
-      await img.images.map(async (image, index) => {
+      const uploadPromises = images.map(async (image, index) => {
+        const fileName = `${stockId}-${index}.jpeg`
         const imageResponse = await fetch(image.uri)
         const blob = await imageResponse.blob()
-        const newFile = new File([blob], `${img.name}-${index}.jpeg`, {
-          type: 'image/jpeg',
-        })
-        const storageRefUri = await ref(storage, `${img.name}-${index}.jpeg`)
-        let upload = await uploadBytesResumable(storageRefUri, newFile)
-        let downloadUrl = await getDownloadURL(upload.ref)
-        await newDownloadUrls.push({ src: downloadUrl })
-        Alert.alert(`image ${index + 1} uploaded`)
+        const storageRef = ref(storage, fileName)
+        const uploadSnapshot = await uploadBytesResumable(storageRef, blob)
+        const downloadUrl = await getDownloadURL(uploadSnapshot.ref)
+        return { src: downloadUrl }
       })
-      return onChange({ name: 'downloadUrls', value: newDownloadUrls })
+
+      const results = await Promise.all(uploadPromises)
+      urls.push(...results)
+      onChange({ name: 'downloadUrls', value: urls })
     } catch (error) {
-      console.error(error)
+      Alert.alert('Upload Error', 'Failed to upload images. Please try again.')
     }
   }
 
-  const sendImages = (imgs) => {
-    const img = {
-      name: stockID,
-      images: imgs,
-    }
-    uploadImages(img)
+  const sendImages = (images) => {
+    uploadImages(stockID || 'temp', images)
   }
 
   return (
@@ -240,20 +180,21 @@ export default function App() {
           data={speciesList}
           value={species}
           setSelected={(val) => {
-            console.log('val in dropdown is: ', val)
             onChange({ name: 'species', value: val })
             filterData(val)
           }}
         />
-                <Text>StockID is: {stockID} </Text>
+
+        <Text style={styles.stockIdText}>Stock ID: {stockID || 'N/A'}</Text>
 
         <DropdownField
           data={['Green', 'Dry']}
-          value={green}
+          value={green ? 'Green' : 'Dry'}
           setSelected={(val) => {
-            onChange({ name: 'green', value: val === 'Green' ? true : false })
+            onChange({ name: 'green', value: val === 'Green' })
           }}
         />
+
         <TextField
           value={description}
           fieldName='Description'
@@ -284,37 +225,23 @@ export default function App() {
           fieldName='Price'
           callBack={(val) => onChange({ name: 'price', value: val })}
         />
+
         <Button
           theme='primary'
           label='Choose photos'
           onPress={pickImageAsync}
         />
-        <Text>Images Selected: {selectedImages.length} </Text>
-        <Button label='Save Slab to DB' onPress={sendDocToDb} />
-        {/* <Buttonˆ
-          label='Close App'
-          onPress={() => {
-            Alert.alert(
-              'Close App',
-              'Are you sure you want to close the app?',
-              [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'OK',
-                  onPress: () => {
-                    if (__DEV__) {
-                      console.log('Closing app in development mode is not supported.');
-                    } else {
-                      // In a production app, you would use a native module or exit logic
-                      console.log('App close functionality is not available in Expo.');
-                    }
-                  },
-                },
-              ],
-              { cancelable: true }
-            );
-          }}
-        /> */}
+
+        <Text style={styles.imageCountText}>
+          Images Selected: {selectedImages.length}
+        </Text>
+
+        {loading ? (
+          <ActivityIndicator size='large' color='#ffd33d' style={styles.loader} />
+        ) : (
+          <Button label='Save Slab to DB' onPress={sendDocToDb} />
+        )}
+
         <StatusBar style='auto' />
       </View>
     </ScrollView>
@@ -328,48 +255,16 @@ const styles = StyleSheet.create({
     paddingTop: 58,
     backgroundColor: 'white',
   },
-  textField: {
+  stockIdText: {
+    fontSize: 16,
+    marginVertical: 10,
+    fontWeight: '600',
+  },
+  imageCountText: {
+    fontSize: 16,
+    marginVertical: 10,
+  },
+  loader: {
     marginVertical: 20,
   },
-  image: {
-    height: 440,
-    borderRadius: 18,
-  },
-  footerContainer: {
-    flex: 2,
-    alignItems: 'center',
-  },
 })
-
-// 'file' comes from the Blob or File API
-// storageRef
-//   .child(`test/${img.name}.jpg`)
-//   .put(img.uri)
-//   .then((snapshot) => {
-//     console.log('img uploaded')
-//     console.log(snapshot)
-//   })
-
-// let testRef = await storageRef.child('test')
-// let spaceRef = await testRef.child(`${img.name}.jpg`)
-// await this.form.images.map(async (img) => {
-// let imageObj = {}
-// imageObj[img.name] = await storageRef.child(`${img.name}.jpg`)
-// await imageObj[img.name].put(img)
-// let url = await imageObj[img.name].getDownloadURL()
-// let urlObj = {
-//   src: url,
-// }
-// await this.form.imageURI.push(urlObj)
-// })
-// let imageObj = {}
-// imageObj[this.form.primaryImage.name] = await storageRef.child(
-//   `${this.form.primaryImage.name}.jpg`
-// )
-// await imageObj[this.form.primaryImage.name].put(this.form.primaryImage)
-// let url = await imageObj[this.form.primaryImage.name].getDownloadURL()
-// let urlObj = {
-//   src: url,
-// }
-// await this.form.imageURI.unshift(urlObj)
-// return console.log('this.form.imageURI: ', this.form.imageURI)
